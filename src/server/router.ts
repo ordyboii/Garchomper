@@ -1,8 +1,8 @@
-import { createRouter } from "./context";
+import { createProtectedRouter } from "./context";
 import superjson from "superjson";
 import { z } from "zod";
 
-export const appRouter = createRouter()
+export const appRouter = createProtectedRouter()
   .transformer(superjson)
   .query("get-all-files", {
     input: z.object({
@@ -11,6 +11,18 @@ export const appRouter = createRouter()
     resolve: ({ input, ctx }) =>
       ctx.prisma.file.findMany({
         where: { userId: input.userId }
+      })
+  })
+  .mutation("upload-files", {
+    input: z.object({
+      content: z.string().array()
+    }),
+    resolve: ({ input, ctx }) =>
+      ctx.prisma.file.createMany({
+        data: input.content.map(file => ({
+          content: file,
+          userId: ctx.user.id
+        }))
       })
   });
 

@@ -3,10 +3,14 @@ import type { AppProps } from "next/app";
 import { SessionProvider } from "next-auth/react";
 import { withTRPC } from "@trpc/next";
 import superjson from "superjson";
+import Head from "next/head";
 
 const MyApp = ({ Component, pageProps }: AppProps) => {
   return (
     <SessionProvider session={pageProps.session}>
+      <Head>
+        <title>Garchomper - Notes and files sharer</title>
+      </Head>
       <Component {...pageProps} />
     </SessionProvider>
   );

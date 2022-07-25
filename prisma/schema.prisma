@@ -13,7 +13,7 @@ datasource db {
 model File {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-  url       String
+  content   String
   userId    String
 
   user User @relation(fields: [userId], references: [id])
