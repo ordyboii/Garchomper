@@ -1,62 +1,53 @@
-import { GetServerSideProps } from "next";
+import { GetServerSidePropsContext } from "next";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { getGarchomperAuth } from "@/server/auth";
 import { useDropzone } from "react-dropzone";
 import { FaGoogle } from "react-icons/fa";
-import { HiCloud, HiExternalLink } from "react-icons/hi";
+import { HiCloud, HiExternalLink, HiTrash } from "react-icons/hi";
+import { InferQueryOutput, trpc } from "@/utils/trpc";
+import toast from "react-hot-toast";
 
-export const getServerSideProps: GetServerSideProps = async ctx => {
+export async function getServerSideProps(ctx: GetServerSidePropsContext) {
   const session = await getGarchomperAuth(ctx);
 
   if (!session) {
     return { props: {} };
   }
-
   return { props: { session } };
-};
+}
 
-const FileCard = () => {
-  return (
-    <article className='bg-white border border-gray-300'>
-      <div className='flex items-center justify-between px-4 py-3 border-b border-gray-300'>
-        <h2 className='font-semibold'>Hello Test file</h2>
-        <a href='#' className='p-2 rounded hover:bg-gray-100'>
-          <HiExternalLink className='w-6 h-6' />
-        </a>
-      </div>
-      <img
-        src='https://images.unsplash.com/photo-1658237242655-c7b39d02ba59'
-        alt='Preview area'
-        className='object-cover'
-      />
-    </article>
-  );
-};
-
-type File = {
+type FileUpload = {
   name: string;
-  type: string;
+  type: "PDF" | "IMAGE";
   preview: string;
+  content: string;
 };
 
 type DropzoneProps = {
-  setFiles: Dispatch<SetStateAction<File[]>>;
+  setFiles: Dispatch<SetStateAction<FileUpload[]>>;
 };
 
-const Dropzone = ({ setFiles }: DropzoneProps) => {
+function Dropzone({ setFiles }: DropzoneProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { "image/*": [], "application/pdf": [".pdf"] },
     onDrop: acceptedFiles => {
-      setFiles(
-        acceptedFiles.map(file => {
-          return {
-            name: file.name,
-            type: file.type,
-            preview: URL.createObjectURL(file)
-          };
-        })
-      );
+      acceptedFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+
+        reader.onload = ev => {
+          setFiles(files => [
+            ...files,
+            {
+              name: file.name,
+              type: file.type.includes("pdf") ? "PDF" : "IMAGE",
+              preview: URL.createObjectURL(file),
+              content: reader.result as string
+            }
+          ]);
+        };
+      });
     }
   });
 
@@ -71,21 +62,52 @@ const Dropzone = ({ setFiles }: DropzoneProps) => {
       {!isDragActive && (
         <div className='flex flex-col text-center gap-2 items-center sm:flex-row sm:text-left'>
           <HiCloud className='w-6 h-6' />
-          <p>Drag and drop some image or pdf files here, or select files</p>
+          <p>
+            Drag and drop some image or pdf files here, or select files (max
+            size: 1mb)
+          </p>
         </div>
       )}
     </div>
   );
-};
+}
 
 type PreviewFileProps = {
-  files: File[];
-  setFiles: Dispatch<SetStateAction<File[]>>;
+  files: FileUpload[];
+  setFiles: Dispatch<SetStateAction<FileUpload[]>>;
 };
 
-const PreviewFiles = ({ files, setFiles }: PreviewFileProps) => {
+function PreviewFiles({ files, setFiles }: PreviewFileProps) {
+  const ctx = trpc.useContext();
+
+  const { mutate: uploadFiles } = trpc.useMutation(["upload-files"], {
+    onSuccess: () => ctx.invalidateQueries(["get-all-files"])
+  });
+
   const deleteFile = (name: string) => {
     setFiles(files.filter(file => file.name !== name));
+  };
+
+  const handleUpload = () => {
+    const toastId = toast.loading("Uploading files...");
+
+    uploadFiles(
+      files.map(file => ({
+        content: file.content,
+        name: file.name,
+        type: file.type
+      })),
+      {
+        onError: error => {
+          toast.error(`Error uploading file ${error}`, { id: toastId });
+        },
+        onSuccess: () => {
+          toast.success("Uploaded files", { id: toastId });
+        }
+      }
+    );
+    // Reset preview files
+    setFiles([]);
   };
 
   if (files.length === 0) {
@@ -98,7 +120,7 @@ const PreviewFiles = ({ files, setFiles }: PreviewFileProps) => {
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4'>
         {files.map(file => (
           <div key={file.name}>
-            {file.type.includes("image") && (
+            {file.type === "IMAGE" && (
               <>
                 <img src={file.preview} alt={file.name} />
                 <button
@@ -110,7 +132,7 @@ const PreviewFiles = ({ files, setFiles }: PreviewFileProps) => {
               </>
             )}
 
-            {file.type.includes("pdf") && (
+            {file.type === "PDF" && (
               <>
                 <button
                   onClick={() => window.open(file.preview)}
@@ -129,19 +151,58 @@ const PreviewFiles = ({ files, setFiles }: PreviewFileProps) => {
           </div>
         ))}
       </div>
-      <button>Upload</button>
+      <button onClick={handleUpload}>Upload</button>
     </section>
   );
+}
+
+type FileProps = {
+  file: InferQueryOutput<"get-all-files">[0];
 };
+
+function FileCard({ file }: FileProps) {
+  return (
+    <article className='bg-white border border-gray-300'>
+      <div className='flex items-center justify-between px-4 py-3 border-b border-gray-300'>
+        <h2 className='font-semibold'>{file.name}</h2>
+        <div className='flex gap-2'>
+          <button className='p-2 rounded hover:bg-gray-100'>
+            <HiTrash className='w-6 h-6' />
+          </button>
+          <a href='#' className='p-2 rounded hover:bg-gray-100'>
+            <HiExternalLink className='w-6 h-6' />
+          </a>
+        </div>
+      </div>
+
+      {file.type === "IMAGE" && (
+        <img
+          src={file.content}
+          alt={file.name}
+          className='object-cover max-h-64 w-full'
+        />
+      )}
+      {file.type === "PDF" && (
+        <iframe
+          title={file.name}
+          className='w-full h-full'
+          src={file.content}
+        />
+      )}
+    </article>
+  );
+}
 
 export default function Index() {
   const { data: session } = useSession();
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<FileUpload[]>([]);
 
   useEffect(() => {
     // Make sure to revoke the data uris to avoid memory leaks, will run on unmount
     return () => files.forEach(file => URL.revokeObjectURL(file.preview));
   }, [files]);
+
+  const { data: allFiles, isLoading } = trpc.useQuery(["get-all-files"]);
 
   return (
     <main className='min-h-screen bg-gray-100'>
@@ -191,11 +252,10 @@ export default function Index() {
           <PreviewFiles files={files} setFiles={setFiles} />
 
           <section className='p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3'>
-            {Array(15)
-              .fill([])
-              .map((file, idx) => (
-                <FileCard key={idx} />
-              ))}
+            {isLoading && <p>Loading...</p>}
+            {allFiles?.map((file, idx) => (
+              <FileCard key={idx} file={file} />
+            ))}
           </section>
         </>
       )}

@@ -2,19 +2,21 @@ import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import { SessionProvider } from "next-auth/react";
 import { withTRPC } from "@trpc/next";
-import superjson from "superjson";
+import { Toaster } from "react-hot-toast";
 import Head from "next/head";
+import superjson from "superjson";
 
-const MyApp = ({ Component, pageProps }: AppProps) => {
+function MyApp({ Component, pageProps }: AppProps) {
   return (
     <SessionProvider session={pageProps.session}>
       <Head>
-        <title>Garchomper - Notes and files sharer</title>
+        <title>Garchomper - File sharer</title>
       </Head>
       <Component {...pageProps} />
+      <Toaster position='top-right' />
     </SessionProvider>
   );
-};
+}
 
 const getBaseUrl = () => {
   if (typeof window !== "undefined") {
@@ -35,5 +37,5 @@ export default withTRPC({
       transformer: superjson
     };
   },
-  ssr: true
+  ssr: false
 })(MyApp);
