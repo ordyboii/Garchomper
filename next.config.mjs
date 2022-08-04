@@ -8,9 +8,7 @@ const nextConfig = {
     defaultLocale: "en"
   },
   experimental: {
-    images: {
-      allowFutureImage: true
-    }
+    newNextLinkBehavior: true
   }
 };
 

@@ -8,6 +8,15 @@ export const appRouter = createProtectedRouter()
         where: { userId: ctx.user.id }
       })
   })
+  .query("get-file-by-id", {
+    input: z.object({
+      id: z.string()
+    }),
+    resolve: ({ input, ctx }) =>
+      ctx.prisma.file.findUnique({
+        where: { id: input.id }
+      })
+  })
   .mutation("upload-files", {
     input: z
       .object({
@@ -24,5 +33,14 @@ export const appRouter = createProtectedRouter()
           name: file.name,
           userId: ctx.user.id
         }))
+      })
+  })
+  .mutation("delete-file", {
+    input: z.object({
+      id: z.string()
+    }),
+    resolve: ({ input, ctx }) =>
+      ctx.prisma.file.delete({
+        where: { id: input.id }
       })
   });

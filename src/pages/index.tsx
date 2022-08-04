@@ -1,14 +1,22 @@
-import { GetServerSidePropsContext } from "next";
+import { GetServerSidePropsContext, GetServerSidePropsResult } from "next";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { signIn, signOut, useSession } from "next-auth/react";
+import { Session } from "next-auth";
 import { getGarchomperAuth } from "@/server/auth";
 import { useDropzone } from "react-dropzone";
 import { FaGoogle } from "react-icons/fa";
-import { HiCloud, HiExternalLink, HiTrash } from "react-icons/hi";
+import {
+  HiClipboardCopy,
+  HiCloud,
+  HiExternalLink,
+  HiTrash
+} from "react-icons/hi";
 import { InferQueryOutput, trpc } from "@/utils/trpc";
 import toast from "react-hot-toast";
 
-export async function getServerSideProps(ctx: GetServerSidePropsContext) {
+export async function getServerSideProps(
+  ctx: GetServerSidePropsContext
+): Promise<GetServerSidePropsResult<{ session?: Session }>> {
   const session = await getGarchomperAuth(ctx);
 
   if (!session) {
@@ -80,7 +88,7 @@ type PreviewFileProps = {
 function PreviewFiles({ files, setFiles }: PreviewFileProps) {
   const ctx = trpc.useContext();
 
-  const { mutate: uploadFiles } = trpc.useMutation(["upload-files"], {
+  const { mutate, isLoading } = trpc.useMutation(["upload-files"], {
     onSuccess: () => ctx.invalidateQueries(["get-all-files"])
   });
 
@@ -88,10 +96,9 @@ function PreviewFiles({ files, setFiles }: PreviewFileProps) {
     setFiles(files.filter(file => file.name !== name));
   };
 
-  const handleUpload = () => {
+  function uploadFiles() {
     const toastId = toast.loading("Uploading files...");
-
-    uploadFiles(
+    mutate(
       files.map(file => ({
         content: file.content,
         name: file.name,
@@ -108,50 +115,47 @@ function PreviewFiles({ files, setFiles }: PreviewFileProps) {
     );
     // Reset preview files
     setFiles([]);
-  };
+  }
 
   if (files.length === 0) {
     return null;
   }
 
   return (
-    <section className='space-y-4 bg-white m-4 border p-4'>
+    <section className='space-y-4 bg-white m-4 border p-6'>
       <h2 className='text-xl font-bold'>Preview Files</h2>
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4'>
         {files.map(file => (
           <div key={file.name}>
-            {file.type === "IMAGE" && (
-              <>
+            <div className='bg-gray-100 p-4 rounded flex flex-col gap-4'>
+              {file.type === "IMAGE" && (
                 <img src={file.preview} alt={file.name} />
-                <button
-                  onClick={() => deleteFile(file.name)}
-                  className='px-2 py-1 rounded bg-red-600 text-white'
-                >
-                  X
-                </button>
-              </>
-            )}
+              )}
 
-            {file.type === "PDF" && (
-              <>
-                <button
-                  onClick={() => window.open(file.preview)}
-                  className='underline text-purple-600 font-bold'
-                >
-                  Preview PDF
-                </button>
-                <button
-                  onClick={() => deleteFile(file.name)}
-                  className='px-2 py-1 rounded bg-red-600 text-white'
-                >
-                  X
-                </button>
-              </>
-            )}
+              {file.type === "PDF" && (
+                <iframe
+                  title={file.name}
+                  className='w-full h-full'
+                  src={file.content}
+                />
+              )}
+              <button
+                onClick={() => deleteFile(file.name)}
+                className='px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700'
+              >
+                Delete
+              </button>
+            </div>
           </div>
         ))}
       </div>
-      <button onClick={handleUpload}>Upload</button>
+      <button
+        disabled={isLoading}
+        onClick={uploadFiles}
+        className='px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700'
+      >
+        Upload
+      </button>
     </section>
   );
 }
@@ -161,16 +165,68 @@ type FileProps = {
 };
 
 function FileCard({ file }: FileProps) {
+  const ctx = trpc.useContext();
+  const { mutate, isLoading } = trpc.useMutation(["delete-file"], {
+    onSuccess: () => ctx.invalidateQueries(["get-all-files"])
+  });
+
+  function deleteFile() {
+    const toastId = toast.loading("Deleting file...");
+
+    // Optimistic update
+    ctx.setQueryData(
+      ["get-all-files"],
+      old => old?.filter(oldFile => oldFile.id !== file.id) as any
+    );
+
+    mutate(
+      { id: file.id },
+      {
+        onError: error => {
+          toast.error(`Error deleting file ${error}`, { id: toastId });
+        },
+        onSuccess: () => {
+          toast.success("Deleted file", { id: toastId });
+        }
+      }
+    );
+  }
+
+  function copyEmbedLink(fileId: string) {
+    navigator.clipboard
+      .writeText(`${location.origin}/embed/${fileId}`)
+      .then(() => {
+        toast.success("Copied embed link");
+      });
+  }
+
   return (
     <article className='bg-white border border-gray-300'>
       <div className='flex items-center justify-between px-4 py-3 border-b border-gray-300'>
         <h2 className='font-semibold'>{file.name}</h2>
         <div className='flex gap-2'>
-          <button className='p-2 rounded hover:bg-gray-100'>
-            <HiTrash className='w-6 h-6' />
+          <button
+            onClick={deleteFile}
+            disabled={isLoading}
+            className='p-2 rounded hover:bg-gray-100'
+          >
+            <HiTrash className='text-purple-600 w-6 h-6' />
           </button>
-          <a href='#' className='p-2 rounded hover:bg-gray-100'>
-            <HiExternalLink className='w-6 h-6' />
+
+          <button
+            onClick={() => copyEmbedLink(file.id)}
+            className='p-2 rounded hover:bg-gray-100'
+          >
+            <HiClipboardCopy className='text-purple-600 w-6 h-6' />
+          </button>
+
+          <a
+            href={`/embed/${file.id}`}
+            target='_blank'
+            rel='noreferrer'
+            className='p-2 rounded hover:bg-gray-100'
+          >
+            <HiExternalLink className='text-purple-600 w-6 h-6' />
           </a>
         </div>
       </div>
@@ -179,9 +235,10 @@ function FileCard({ file }: FileProps) {
         <img
           src={file.content}
           alt={file.name}
-          className='object-cover max-h-64 w-full'
+          className='object-cover max-h-72 w-full'
         />
       )}
+
       {file.type === "PDF" && (
         <iframe
           title={file.name}
