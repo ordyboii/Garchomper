@@ -202,7 +202,10 @@ function FileCard({ file }: FileProps) {
 
   return (
     <article className='bg-white flex flex-col border border-gray-300'>
-      <div className='flex items-center justify-between px-4 py-3 border-b border-gray-300'>
+      <div
+        className='flex flex-col items-center justify-between px-4 py-3 border-b 
+      border-gray-300 sm:flex-row'
+      >
         <h2 className='font-semibold'>{file.name}</h2>
         <div className='flex gap-2'>
           <a
