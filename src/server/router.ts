@@ -1,29 +1,46 @@
 import { createProtectedRouter } from "./context";
-import superjson from "superjson";
 import { z } from "zod";
 
 export const appRouter = createProtectedRouter()
-  .transformer(superjson)
   .query("get-all-files", {
+    resolve: ({ ctx }) =>
+      ctx.prisma.file.findMany({
+        where: { userId: ctx.user.id }
+      })
+  })
+  .query("get-file-by-id", {
     input: z.object({
-      userId: z.string()
+      id: z.string()
     }),
     resolve: ({ input, ctx }) =>
-      ctx.prisma.file.findMany({
-        where: { userId: input.userId }
+      ctx.prisma.file.findUnique({
+        where: { id: input.id }
       })
   })
   .mutation("upload-files", {
-    input: z.object({
-      content: z.string().array()
-    }),
+    input: z
+      .object({
+        content: z.string(),
+        type: z.enum(["PDF", "IMAGE"]),
+        name: z.string()
+      })
+      .array(),
     resolve: ({ input, ctx }) =>
       ctx.prisma.file.createMany({
-        data: input.content.map(file => ({
-          content: file,
+        data: input.map(file => ({
+          content: file.content,
+          type: file.type,
+          name: file.name,
           userId: ctx.user.id
         }))
       })
+  })
+  .mutation("delete-file", {
+    input: z.object({
+      id: z.string()
+    }),
+    resolve: ({ input, ctx }) =>
+      ctx.prisma.file.delete({
+        where: { id: input.id }
+      })
   });
-
-export type AppRouter = typeof appRouter;
