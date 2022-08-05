@@ -269,10 +269,7 @@ export default function Index() {
     <main className='min-h-screen flex flex-col bg-gray-100'>
       {!session && (
         <section className='h-screen grid place-content-center'>
-          <div
-            className='bg-white flex flex-col items-center border border-gray-300 p-12 
-            space-y-4 shadow'
-          >
+          <div className='bg-white flex flex-col items-center border border-gray-300 p-12 space-y-4'>
             <div className='-mt-24 w-24 h-24 rounded-full bg-purple-600 border border-gray-300'></div>
             <h1 className='font-bold text-4xl'>Garchomper</h1>
             <p className='text-lg'>

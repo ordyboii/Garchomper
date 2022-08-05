@@ -10,7 +10,8 @@ function MyApp({ Component, pageProps }: AppProps) {
   return (
     <SessionProvider session={pageProps.session}>
       <Head>
-        <title>Garchomper - File sharer</title>
+        <title>Garchomper - Share images and files between devices</title>
+        <link rel='shortcut icon' href='/favicon.png' type='image/png' />
       </Head>
       <Component {...pageProps} />
       <Toaster position='top-right' />
