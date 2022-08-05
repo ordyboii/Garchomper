@@ -69,13 +69,11 @@ function Dropzone({ setFiles }: DropzoneProps) {
     >
       <input {...getInputProps()} />
       {isDragActive && <p>Drop the files here ...</p>}
+
       {!isDragActive && (
         <div className='flex flex-col text-center gap-2 items-center sm:flex-row sm:text-left'>
           <HiCloud className='w-6 h-6' />
-          <p>
-            Drag and drop some image or pdf files here, or select files (max
-            size: 1mb)
-          </p>
+          <p>Drag/select any image or PDF files (max size: 1mb)</p>
         </div>
       )}
     </div>
@@ -271,9 +269,15 @@ export default function Index() {
     <main className='min-h-screen flex flex-col bg-gray-100'>
       {!session && (
         <section className='h-screen grid place-content-center'>
-          <div className='bg-white border border-gray-300 p-12 space-y-4'>
+          <div
+            className='bg-white flex flex-col items-center border border-gray-300 p-12 
+            space-y-4 shadow'
+          >
+            <div className='-mt-24 w-24 h-24 rounded-full bg-purple-600 border border-gray-300'></div>
             <h1 className='font-bold text-4xl'>Garchomper</h1>
-            <p>A way to share notes and files</p>
+            <p className='text-lg'>
+              An easier way to share notes and files between devices
+            </p>
             <button
               onClick={() => signIn("google")}
               className='flex gap-3 items-center px-4 py-3 font-semibold bg-purple-600 text-white
@@ -293,7 +297,7 @@ export default function Index() {
             sm:flex-row sm:items-center sm:gap-10'
           >
             {session.user?.image && session.user.name && (
-              <div className='flex items-center gap-2'>
+              <div className='hidden sm:flex sm:items-center sm:gap-2'>
                 <img
                   src={session.user.image}
                   alt={session.user.name}
