@@ -13,10 +13,15 @@ function FileEmbed({ fileId }: Props) {
   }
 
   return (
-    <main>
-      <section>
-        <pre>{JSON.stringify(data, null, 2)}</pre>
-      </section>
+    <main className='flex flex-col'>
+      {data?.type === "IMAGE" && <img src={data.content} alt={data.name} />}
+      {data?.type === "PDF" && (
+        <iframe
+          title={data.name}
+          className='w-screen h-screen'
+          src={data.content}
+        />
+      )}
     </main>
   );
 }
@@ -25,7 +30,7 @@ export default function FileEmbedPage() {
   const { query } = useRouter();
 
   if (!query.fileId || typeof query.fileId !== "string") {
-    return null;
+    return <p className='text-4xl text-red-500'>Error 400: Wrong Url link</p>;
   }
 
   return <FileEmbed fileId={query.fileId} />;

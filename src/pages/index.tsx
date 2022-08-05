@@ -8,6 +8,8 @@ import { FaGoogle } from "react-icons/fa";
 import {
   HiClipboardCopy,
   HiCloud,
+  HiDownload,
+  HiEmojiSad,
   HiExternalLink,
   HiTrash
 } from "react-icons/hi";
@@ -201,10 +203,18 @@ function FileCard({ file }: FileProps) {
   }
 
   return (
-    <article className='bg-white border border-gray-300'>
+    <article className='bg-white flex flex-col border border-gray-300'>
       <div className='flex items-center justify-between px-4 py-3 border-b border-gray-300'>
         <h2 className='font-semibold'>{file.name}</h2>
         <div className='flex gap-2'>
+          <a
+            href={file.content}
+            download={file.name}
+            className='p-2 rounded hover:bg-gray-100'
+          >
+            <HiDownload className='text-purple-600 w-6 h-6' />
+          </a>
+
           <button
             onClick={deleteFile}
             disabled={isLoading}
@@ -235,16 +245,12 @@ function FileCard({ file }: FileProps) {
         <img
           src={file.content}
           alt={file.name}
-          className='object-cover max-h-72 w-full'
+          className='object-cover flex-1'
         />
       )}
 
       {file.type === "PDF" && (
-        <iframe
-          title={file.name}
-          className='w-full h-full'
-          src={file.content}
-        />
+        <iframe title={file.name} className='flex-1' src={file.content} />
       )}
     </article>
   );
@@ -262,7 +268,7 @@ export default function Index() {
   const { data: allFiles, isLoading } = trpc.useQuery(["get-all-files"]);
 
   return (
-    <main className='min-h-screen bg-gray-100'>
+    <main className='min-h-screen flex flex-col bg-gray-100'>
       {!session && (
         <section className='h-screen grid place-content-center'>
           <div className='bg-white border border-gray-300 p-12 space-y-4'>
@@ -308,12 +314,31 @@ export default function Index() {
 
           <PreviewFiles files={files} setFiles={setFiles} />
 
-          <section className='p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3'>
-            {isLoading && <p>Loading...</p>}
-            {allFiles?.map((file, idx) => (
-              <FileCard key={idx} file={file} />
-            ))}
-          </section>
+          {isLoading && (
+            <section className='bg-white m-4 p-4 border border-gray-300'>
+              <h2 className='text-xl'>Loading files...</h2>
+            </section>
+          )}
+
+          {allFiles?.length === 0 && (
+            <section
+              className='bg-white border border-gray-300 flex-1 flex items-center 
+              justify-center p-4 m-4'
+            >
+              <h2 className='text-lg flex flex-col gap-3 items-center sm:flex-row sm:text-3xl'>
+                <HiEmojiSad className='text-purple-500 w-12 h-12' /> It appears
+                you have not uploaded any files yet.
+              </h2>
+            </section>
+          )}
+
+          {allFiles && allFiles.length > 0 && (
+            <section className='p-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3'>
+              {allFiles?.map((file, idx) => (
+                <FileCard key={idx} file={file} />
+              ))}
+            </section>
+          )}
         </>
       )}
     </main>
